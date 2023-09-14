@@ -2,6 +2,7 @@ import cv2
 from ControllerMapping import Buttons
 from Macro import Macro
 from ScriptCore import Template, PrintColors
+import random
 import numpy as np
 
 class Script(Template):
@@ -37,6 +38,21 @@ class Script(Template):
 
         self.print_log('Warzone model loaded!', PrintColors.COLOR_GREEN)
 
+        self.rapid_fire = Macro(controller, [
+            [self.right_trigger_float, 0],
+            ["wait_random", 50, 150],
+            [self.right_trigger_float, 1],
+            ["wait_random", 50, 150],
+            [self.right_trigger_float, 0],
+        ])
+         self.auto_melee = Macro(controller, [
+            [self.release_button, Buttons.BTN_RIGHT_THUMB],
+            ["wait_random", 50, 150],
+            [self.press_button, Buttons.BTN_RIGHT_THUMB],
+            ["wait_random", 50, 150],
+            [self.release_button, Buttons.BTN_RIGHT_THUMB]
+        ])
+
     def getDistance(self, x1, y1, x2, y2):
         return np.sqrt((x2-x1)**2 + (y2-y1)**2)
 
@@ -50,6 +66,25 @@ class Script(Template):
 
         if (height == 0):
             return frame
+            
+        if (self.get_setting('hair_trigger')):
+            # Hair trigger left
+            if (self.get_actual_left_trigger() > 0.01):
+                self.left_trigger_float(1)
+
+            # Hair trigger right
+            if (self.get_actual_right_trigger() > 0.01 and self.rapid_fire.isStopped()):
+                self.right_trigger_float(1)
+
+       if (self.get_setting('auto_melee')):
+            # Auto Melee 
+            if (self.is_actual_button_pressed(Buttons.BTN_RIGHT_THUMB)):
+                self.auto_melee.run()
+
+       if (self.get_setting('rapid_fire')):
+            # Rapid Fire
+            if (self.get_actual_right_trigger() > 0.01):
+                self.rapid_fire.run()
 
         # Generate some variables for the frame
         adsTopX = round(int(width/2) - int(detectionSize/2))
@@ -195,7 +230,12 @@ class Script(Template):
         if (self.trackingY < 0):
             self.trackingY = np.clip(self.trackingY + 0.01, -1, 0)
         
+        self.auto_melee.cycle()
 
+        self.rapid_fire.cycle()
+
+
+        return frame
 
         return frame
 
